@@ -2,7 +2,9 @@ package org.example.authchecking.security;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.Customizer;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -29,12 +31,14 @@ public class SecurityConfig {
         );
 
         corsConfiguration.setAllowedMethods(
-                List.of("GET","POST","PUT","DELETE","OPTIONS")
+                List.of("GET", "POST", "PUT", "DELETE", "OPTIONS")
         );
 
         corsConfiguration.setAllowedHeaders(
                 List.of("*")
         );
+
+        corsConfiguration.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
 
@@ -50,13 +54,13 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .cors(Customizer.withDefaults())
+                .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/public").permitAll()
-                        .requestMatchers("/api/admin").hasRole("ADMIN")
-                        .anyRequest().authenticated()
-                )
-                .httpBasic(Customizer.withDefaults());
-
+                                .requestMatchers("/api/public", "/auth/login", "/auth/logout").permitAll()
+                                .requestMatchers("/api/admin").hasRole("ADMIN")
+                                .anyRequest().authenticated()
+//                .httpBasic(Customizer.withDefaults() //since we don't use basic authentication
+                );
         return http.build();
     }
 
@@ -74,11 +78,16 @@ public class SecurityConfig {
                 .roles("ADMIN")
                 .build();
 
-        return new InMemoryUserDetailsManager(user,admin);
+        return new InMemoryUserDetailsManager(user, admin);
     }
 
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
+    }
+
+    @Bean
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration configuration) throws Exception {
+        return configuration.getAuthenticationManager();
     }
 }

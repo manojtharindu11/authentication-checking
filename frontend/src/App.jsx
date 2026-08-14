@@ -22,6 +22,7 @@ function App() {
       headers: {
         Authorization: `Basic ${credentials}`,
       },
+      credentials: "include",
     });
 
     if (!response.ok) {
@@ -30,6 +31,38 @@ function App() {
     }
 
     const data = response.text();
+
+    setMessage(data);
+  };
+
+  const login = async () => {
+    setMessage("Fetching data...");
+
+    const response = await fetch("http://localhost:8080/auth/login", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+      body: JSON.stringify({
+        username: username,
+        password: password,
+      }),
+    });
+
+    const data = await response.text();
+
+    setMessage(data);
+  };
+
+  const logout = async () => {
+    setMessage("Fetching data...");
+    const response = await fetch("http://localhost:8080/auth/logout", {
+      method: "POST",
+      credentials: "include",
+    });
+
+    const data = await response.text();
 
     setMessage(data);
   };
@@ -59,8 +92,16 @@ function App() {
         Call public API
       </button>
       <span> | </span>
+      <button type="button" onClick={login}>
+        Login
+      </button>
+      <span> | </span>
       <button type="button" onClick={callProfileApi}>
         Call profile API
+      </button>
+      <span> | </span>
+      <button type="button" onClick={logout}>
+        Logout
       </button>
 
       <p>{message}</p>
