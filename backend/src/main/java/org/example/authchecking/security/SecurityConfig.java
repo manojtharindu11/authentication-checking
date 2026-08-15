@@ -13,6 +13,8 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.logout.HttpStatusReturningLogoutSuccessHandler;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -54,13 +56,26 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .cors(Customizer.withDefaults())
-                .csrf(csrf -> csrf.disable())
+                .csrf(csrf -> csrf
+                        .csrfTokenRepository(
+                                CookieCsrfTokenRepository.withHttpOnlyFalse()
+                        )
+                )
                 .authorizeHttpRequests(auth -> auth
-                                .requestMatchers("/api/public", "/auth/login", "/auth/logout").permitAll()
+                                .requestMatchers("/api/public", "/auth/login", "/auth/csrf").permitAll()
                                 .requestMatchers("/api/admin").hasRole("ADMIN")
                                 .anyRequest().authenticated()
 //                .httpBasic(Customizer.withDefaults() //since we don't use basic authentication
-                );
+                )
+                .logout(logout -> logout
+                        .logoutUrl("/auth/logout")
+                        .deleteCookies("JSESSIONID")
+                        .invalidateHttpSession(true)
+                        .clearAuthentication(true)
+                        .logoutSuccessHandler(
+                                new HttpStatusReturningLogoutSuccessHandler()
+                        )
+                ) ;
         return http.build();
     }
 

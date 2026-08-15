@@ -8,6 +8,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
+import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -43,14 +44,19 @@ public class AuthController {
         return "Login successful";
     }
 
-    @PostMapping("/logout")
-    public String logout(HttpServletRequest request) {
+//    @PostMapping("/logout")
+//    public String logout(HttpServletRequest request) {
+//
+//        if (request.getSession(false) != null) {
+//            request.getSession(false).invalidate();
+//        }
+//
+//        SecurityContextHolder.clearContext();
+//        return "Logged out";
+//    }
 
-        if (request.getSession(false) != null) {
-            request.getSession(false).invalidate();
-        }
-
-        SecurityContextHolder.clearContext();
-        return "Logged out";
+    @GetMapping("/csrf")
+    public CsrfToken csrf(CsrfToken csrfToken) {
+        return  csrfToken;
     }
 }

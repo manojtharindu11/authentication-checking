@@ -35,13 +35,26 @@ function App() {
     setMessage(data);
   };
 
+  const getCsrfToken = async () => {
+    const response = await fetch("http://localhost:8080/auth/csrf", {
+      credentials: "include",
+    });
+
+    const data = await response.json();
+
+    return data.token;
+  };
+
   const login = async () => {
     setMessage("Fetching data...");
+
+    const csrfToken = await getCsrfToken();
 
     const response = await fetch("http://localhost:8080/auth/login", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        "X-XSRF-TOKEN": csrfToken,
       },
       credentials: "include",
       body: JSON.stringify({
@@ -57,14 +70,45 @@ function App() {
 
   const logout = async () => {
     setMessage("Fetching data...");
+
+    const csrfToken = await getCsrfToken();
+
     const response = await fetch("http://localhost:8080/auth/logout", {
       method: "POST",
       credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        "X-XSRF-TOKEN": csrfToken,
+      },
     });
 
-    const data = await response.text();
+    if (response.ok) {
+      setMessage("Logged out");
+    } else {
+      setMessage(`Logout failed: ${response.status}`);
+    }
+  };
 
-    setMessage(data);
+  const updateProfile = async () => {
+    setMessage("Fetching data...");
+
+    const csrfToken = await getCsrfToken();
+
+    const response = await fetch("http://localhost:8080/api/profile/update", {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        "X-XSRF-Token": csrfToken,
+      },
+    });
+
+    console.log("Logout status:", response.status);
+
+    if (response.ok) {
+      setMessage("Logged out");
+    } else {
+      setMessage(`Logout failed: ${response.status}`);
+    }
   };
 
   return (
@@ -98,6 +142,10 @@ function App() {
       <span> | </span>
       <button type="button" onClick={callProfileApi}>
         Call profile API
+      </button>
+      <span> | </span>
+      <button type="button" onClick={updateProfile}>
+        Update profile API
       </button>
       <span> | </span>
       <button type="button" onClick={logout}>
