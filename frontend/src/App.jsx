@@ -45,6 +45,29 @@ function App() {
     return data.token;
   };
 
+  const register = async () => {
+    setMessage("Fetching data...");
+
+    const csrfToken = await getCsrfToken();
+
+    const response = await fetch("http://localhost:8080/auth/register", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-XSRF-TOKEN": csrfToken,
+      },
+      credentials: "include",
+      body: JSON.stringify({
+        username: username,
+        password: password,
+      }),
+    });
+
+    const data = await response.text();
+
+    setMessage(data);
+  };
+
   const login = async () => {
     setMessage("Fetching data...");
 
@@ -134,6 +157,10 @@ function App() {
 
       <button type="button" onClick={callPublicApi}>
         Call public API
+      </button>
+      <span> | </span>
+      <button type="button" onClick={register}>
+        Register
       </button>
       <span> | </span>
       <button type="button" onClick={login}>

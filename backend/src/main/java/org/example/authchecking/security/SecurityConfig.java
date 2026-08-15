@@ -1,7 +1,9 @@
 package org.example.authchecking.security;
 
+import org.springframework.boot.security.autoconfigure.web.servlet.PathRequest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
@@ -57,16 +59,30 @@ public class SecurityConfig {
         http
                 .cors(Customizer.withDefaults())
                 .csrf(csrf -> csrf
+                        .ignoringRequestMatchers(PathRequest.toH2Console())
                         .csrfTokenRepository(
                                 CookieCsrfTokenRepository.withHttpOnlyFalse()
                         )
                 )
                 .authorizeHttpRequests(auth -> auth
-                                .requestMatchers("/api/public", "/auth/login", "/auth/csrf").permitAll()
+                                .requestMatchers(
+                                        PathRequest.toH2Console()
+                                )
+                                .permitAll()
+                                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                                .requestMatchers
+                                        (
+                                                "/api/public",
+                                                "/auth/login",
+                                                "/auth/csrf",
+                                                "/auth/register"
+                                        ).permitAll()
                                 .requestMatchers("/api/admin").hasRole("ADMIN")
                                 .anyRequest().authenticated()
 //                .httpBasic(Customizer.withDefaults() //since we don't use basic authentication
                 )
+                .headers(headers -> headers
+                        .frameOptions(frame -> frame.sameOrigin()))
                 .logout(logout -> logout
                         .logoutUrl("/auth/logout")
                         .deleteCookies("JSESSIONID")
@@ -75,26 +91,26 @@ public class SecurityConfig {
                         .logoutSuccessHandler(
                                 new HttpStatusReturningLogoutSuccessHandler()
                         )
-                ) ;
+                );
         return http.build();
     }
 
-    @Bean
-    public UserDetailsService userDetailsService(PasswordEncoder passwordEncoder) {
-        UserDetails user = User.builder()
-                .username("user")
-                .password(passwordEncoder.encode("password"))
-                .roles("USER")
-                .build();
-
-        UserDetails admin = User.builder()
-                .username("admin")
-                .password(passwordEncoder.encode("admin123"))
-                .roles("ADMIN")
-                .build();
-
-        return new InMemoryUserDetailsManager(user, admin);
-    }
+//    @Bean
+//    public UserDetailsService userDetailsService(PasswordEncoder passwordEncoder) {
+//        UserDetails user = User.builder()
+//                .username("user")
+//                .password(passwordEncoder.encode("password"))
+//                .roles("USER")
+//                .build();
+//
+//        UserDetails admin = User.builder()
+//                .username("admin")
+//                .password(passwordEncoder.encode("admin123"))
+//                .roles("ADMIN")
+//                .build();
+//
+//        return new InMemoryUserDetailsManager(user, admin);
+//    }
 
     @Bean
     public PasswordEncoder passwordEncoder() {
