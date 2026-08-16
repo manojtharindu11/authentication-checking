@@ -8,6 +8,7 @@ import org.example.authchecking.entity.AppUser;
 import org.example.authchecking.repository.UserRepository;
 import org.example.authchecking.security.CustomUserDetailsService;
 import org.example.authchecking.security.JwtService;
+import org.example.authchecking.service.RefreshTokenService;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
@@ -33,6 +34,7 @@ public class AuthController {
     private final JwtService jwtService;
     private final JwtDecoder jwtDecoder;
     private final CustomUserDetailsService userDetailsService;
+    private final RefreshTokenService refreshTokenService;
 
     public AuthController(
             AuthenticationManager authenticationManager,
@@ -40,7 +42,8 @@ public class AuthController {
             PasswordEncoder passwordEncoder,
             JwtService jwtService,
             JwtDecoder jwtDecoder,
-            CustomUserDetailsService userDetailsService
+            CustomUserDetailsService userDetailsService,
+            RefreshTokenService refreshTokenService
     ) {
         this.authenticationManager = authenticationManager;
         this.userRepository = userRepository;
@@ -48,6 +51,7 @@ public class AuthController {
         this.jwtService = jwtService;
         this.jwtDecoder = jwtDecoder;
         this.userDetailsService = userDetailsService;
+        this.refreshTokenService = refreshTokenService;
     }
 
     @PostMapping("/register")
@@ -80,6 +84,8 @@ public class AuthController {
 
         String refreshToken = jwtService.generateRefreshToken(authentication);
 
+        refreshTokenService.save(refreshToken, authentication.getName());
+
         ResponseCookie refreshCookie = ResponseCookie.from("refreshToken", refreshToken)
                 .httpOnly(true)
                 .secure(false)  //localhost only
@@ -99,15 +105,18 @@ public class AuthController {
     }
 
     @PostMapping("/refresh")
-    public ResponseEntity<LoginResponse> refresh(@CookieValue(name = "refreshToken", required = false) String refreshToken) {
-        if (refreshToken == null) {
+    public ResponseEntity<LoginResponse> refresh(
+            @CookieValue(name = "refreshToken", required = false) String oldRefreshToken,
+            HttpServletResponse response
+    ) {
+        if (oldRefreshToken == null) {
             return ResponseEntity.status(401).build();
         }
 
         Jwt jwt;
 
         try {
-            jwt = jwtDecoder.decode(refreshToken);
+            jwt = jwtDecoder.decode(oldRefreshToken);
         } catch (JwtException e) {
             return ResponseEntity.status(401).build();
         }
@@ -115,6 +124,12 @@ public class AuthController {
         String type = jwt.getClaimAsString("type");
 
         if (!"refresh".equals(type)) {
+            return ResponseEntity.status(401).build();
+        }
+
+        try {
+            refreshTokenService.validate(oldRefreshToken);
+        } catch (RuntimeException e) {
             return ResponseEntity.status(401).build();
         }
 
@@ -128,7 +143,23 @@ public class AuthController {
                 userDetails.getAuthorities()
         );
 
+        // revoke old refresh token
+        refreshTokenService.revoke(oldRefreshToken);
+
         String newAccessToken = jwtService.generateToken(authentication);
+        String newRefreshToken = jwtService.generateRefreshToken(authentication);
+
+        refreshTokenService.save(newRefreshToken, username);
+
+        ResponseCookie refreshCookie = ResponseCookie.from("refreshToken", newRefreshToken)
+                .httpOnly(true)
+                .secure(false)
+                .sameSite("Lax")
+                .path("/auth")
+                .maxAge(Duration.ofDays(7))
+                .build();
+
+        response.addHeader(HttpHeaders.SET_COOKIE, refreshCookie.toString());
 
         return ResponseEntity.ok(
                 new LoginResponse(newAccessToken)
@@ -136,9 +167,15 @@ public class AuthController {
     }
 
     @PostMapping("/logout")
-    public ResponseEntity<Void> logout(HttpServletResponse response) {
+    public ResponseEntity<Void> logout(
+            @CookieValue(name = "refreshToken", required = false) String refreshToken,
+            HttpServletResponse response) {
 
-        ResponseCookie cookie = ResponseCookie.from("refreshToken", "")
+        if (refreshToken != null) {
+            refreshTokenService.revoke(refreshToken);
+        }
+
+        ResponseCookie deleteCookie = ResponseCookie.from("refreshToken", "")
                 .httpOnly(true)
                 .secure(false)
                 .sameSite("Lax")
@@ -148,7 +185,7 @@ public class AuthController {
 
         response.addHeader(
                 HttpHeaders.SET_COOKIE,
-                cookie.toString()
+                deleteCookie.toString()
         );
 
         return ResponseEntity.ok().build();
