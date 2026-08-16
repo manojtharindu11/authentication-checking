@@ -14,15 +14,48 @@ function App() {
   };
 
   const callProfileApi = async () => {
+    let token = localStorage.getItem("accessToken");
+
+    let response = await fetch("http://localhost:8080/api/profile", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (response.status === 401) {
+      token = await refreshAccessToken();
+
+      if (!token) {
+        setMessage("Please login again");
+        return;
+      }
+
+      response = await fetch("http://localhost:8080/api/profile", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+    }
+
+    if (!response.ok) {
+      setMessage(`Request failed: ${response.status}`);
+      return;
+    }
+
+    const data = await response.text();
+
+    setMessage(data);
+  };
+
+  const callAdminApi = async () => {
     setMessage("Fetching data...");
 
-    const credentials = btoa(`${username}:${password}`);
+    const token = localStorage.getItem("accessToken");
 
-    const response = await fetch("http://localhost:8080/api/profile", {
+    const response = await fetch("http://localhost:8080/api/admin", {
       headers: {
-        Authorization: `Basic ${credentials}`,
+        Authorization: `Bearer ${token}`,
       },
-      credentials: "include",
     });
 
     if (!response.ok) {
@@ -48,21 +81,21 @@ function App() {
   const register = async () => {
     setMessage("Fetching data...");
 
-    const csrfToken = await getCsrfToken();
+    // const csrfToken = await getCsrfToken();
 
     const response = await fetch("http://localhost:8080/auth/register", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-XSRF-TOKEN": csrfToken,
+        // "X-XSRF-TOKEN": csrfToken,
       },
-      credentials: "include",
+      // credentials: "include",
       body: JSON.stringify({
         username: username,
         password: password,
       }),
     });
-
+    console.log(response);
     const data = await response.text();
 
     setMessage(data);
@@ -71,13 +104,13 @@ function App() {
   const login = async () => {
     setMessage("Fetching data...");
 
-    const csrfToken = await getCsrfToken();
+    // const csrfToken = await getCsrfToken();
 
     const response = await fetch("http://localhost:8080/auth/login", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-XSRF-TOKEN": csrfToken,
+        // "X-XSRF-TOKEN": csrfToken,
       },
       credentials: "include",
       body: JSON.stringify({
@@ -86,26 +119,34 @@ function App() {
       }),
     });
 
-    const data = await response.text();
+    if (!response.ok) {
+      setMessage("Login failed");
+      return;
+    }
+    const data = await response.json();
+    console.log(data);
 
-    setMessage(data);
+    localStorage.setItem("accessToken", data.accessToken);
+
+    setMessage("Login successful");
   };
 
   const logout = async () => {
     setMessage("Fetching data...");
 
-    const csrfToken = await getCsrfToken();
+    // const csrfToken = await getCsrfToken();
 
     const response = await fetch("http://localhost:8080/auth/logout", {
       method: "POST",
       credentials: "include",
       headers: {
         "Content-Type": "application/json",
-        "X-XSRF-TOKEN": csrfToken,
+        // "X-XSRF-TOKEN": csrfToken,
       },
     });
 
     if (response.ok) {
+      localStorage.removeItem("accessToken");
       setMessage("Logged out");
     } else {
       setMessage(`Logout failed: ${response.status}`);
@@ -132,6 +173,24 @@ function App() {
     } else {
       setMessage(`Logout failed: ${response.status}`);
     }
+  };
+
+  const refreshAccessToken = async () => {
+    const response = await fetch("http://localhost:8080/auth/refresh", {
+      method: "POST",
+      credentials: "include",
+    });
+
+    if (!response.ok) {
+      localStorage.removeItem("accessToken");
+      return null;
+    }
+
+    const data = await response.json();
+
+    localStorage.setItem("accessToken", data.accessToken);
+
+    return data.accessToken;
   };
 
   return (
@@ -173,6 +232,10 @@ function App() {
       <span> | </span>
       <button type="button" onClick={updateProfile}>
         Update profile API
+      </button>
+      <span> | </span>
+      <button type="button" onClick={callAdminApi}>
+        Call Admin API
       </button>
       <span> | </span>
       <button type="button" onClick={logout}>
