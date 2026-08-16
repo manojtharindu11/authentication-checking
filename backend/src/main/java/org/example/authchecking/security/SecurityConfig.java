@@ -62,13 +62,16 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(
+            HttpSecurity http,
+            OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler
+    ) throws Exception {
         http
                 .cors(Customizer.withDefaults())
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(
-                                SessionCreationPolicy.STATELESS
+                                SessionCreationPolicy.IF_REQUIRED
                         ))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
@@ -81,8 +84,10 @@ public class SecurityConfig {
                                         "/api/public",
                                         "/auth/login",
                                         "/auth/register",
-                                        "/auth/refresh"  ,
-                                        "/auth/logout"
+                                        "/auth/refresh",
+                                        "/auth/logout",
+                                        "/oauth2/**",
+                                        "/login/oauth2/**"
                                 ).permitAll()
                         .requestMatchers("/api/admin").hasRole("ADMIN")
                         .anyRequest().authenticated()
@@ -92,6 +97,8 @@ public class SecurityConfig {
                 .oauth2ResourceServer(oauth2 ->
                         oauth2.jwt(jwt ->
                                 jwt.jwtAuthenticationConverter(jwtAuthenticationConverter())))
+                .oauth2Login(oauth2 ->
+                        oauth2.successHandler(oAuth2LoginSuccessHandler))
                 .headers(headers -> headers
                         .frameOptions(frame -> frame.sameOrigin()));
         return http.build();

@@ -5,6 +5,7 @@ import org.example.authchecking.dto.LoginRequest;
 import org.example.authchecking.dto.LoginResponse;
 import org.example.authchecking.dto.RegisterRequest;
 import org.example.authchecking.entity.AppUser;
+import org.example.authchecking.entity.AuthProvider;
 import org.example.authchecking.repository.UserRepository;
 import org.example.authchecking.security.CustomUserDetailsService;
 import org.example.authchecking.security.JwtService;
@@ -66,6 +67,8 @@ public class AuthController {
                 "USER"
         );
 
+        user.setProvider(AuthProvider.LOCAL);
+
         userRepository.save(user);
 
         return ResponseEntity.ok("User registered successfully");
@@ -80,7 +83,7 @@ public class AuthController {
                 )
         );
 
-        String accessToken = jwtService.generateToken(authentication);
+        String accessToken = jwtService.generateAccessToken(authentication);
 
         String refreshToken = jwtService.generateRefreshToken(authentication);
 
@@ -146,7 +149,7 @@ public class AuthController {
         // revoke old refresh token
         refreshTokenService.revoke(oldRefreshToken);
 
-        String newAccessToken = jwtService.generateToken(authentication);
+        String newAccessToken = jwtService.generateAccessToken(authentication);
         String newRefreshToken = jwtService.generateRefreshToken(authentication);
 
         refreshTokenService.save(newRefreshToken, username);

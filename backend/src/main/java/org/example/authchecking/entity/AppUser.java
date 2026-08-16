@@ -19,11 +19,18 @@ public class AppUser {
     @Column(unique = true, nullable = false)
     private String username;
 
-    @Column(nullable = false)
+    @Column
     private String password;
 
     @Column(nullable = false)
     private String role;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private AuthProvider provider;
+
+    @Column(nullable = false)
+    private String providerId;
 
     public AppUser(
             String username,

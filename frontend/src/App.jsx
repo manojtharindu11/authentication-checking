@@ -193,6 +193,10 @@ function App() {
     return data.accessToken;
   };
 
+  const loginWithGoogle = () => {
+    window.location.href = "http://localhost:8080/oauth2/authorization/google";
+  };
+
   return (
     <div className="out">
       <h1>Authentication Checking</h1>
@@ -220,6 +224,10 @@ function App() {
       <span> | </span>
       <button type="button" onClick={register}>
         Register
+      </button>
+      <span> | </span>
+      <button type="button" onClick={loginWithGoogle}>
+        Continue with Google
       </button>
       <span> | </span>
       <button type="button" onClick={login}>
