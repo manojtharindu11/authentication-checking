@@ -60,6 +60,8 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
                     newUser.setProvider(AuthProvider.GOOGLE);
                     newUser.setProviderId(googleId);
 
+                    newUser.setVerified(true);
+
                     return userRepository.save(newUser);
                 });
 

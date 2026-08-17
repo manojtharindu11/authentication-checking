@@ -1,4 +1,4 @@
-package org.example.authchecking.controller.basic;
+package org.example.authchecking.controller;
 
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;

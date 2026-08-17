@@ -1,4 +1,4 @@
-package org.example.authchecking.controller.session_cookie;
+package org.example.authchecking.controller;
 
 import jakarta.servlet.http.HttpServletResponse;
 import org.example.authchecking.dto.LoginRequest;
@@ -9,11 +9,14 @@ import org.example.authchecking.entity.AuthProvider;
 import org.example.authchecking.repository.UserRepository;
 import org.example.authchecking.security.CustomUserDetailsService;
 import org.example.authchecking.security.JwtService;
+import org.example.authchecking.service.EmailService;
+import org.example.authchecking.service.EmailVerificationService;
 import org.example.authchecking.service.RefreshTokenService;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -36,6 +39,8 @@ public class AuthController {
     private final JwtDecoder jwtDecoder;
     private final CustomUserDetailsService userDetailsService;
     private final RefreshTokenService refreshTokenService;
+    private final EmailVerificationService emailVerificationService;
+    private final EmailService emailService;
 
     public AuthController(
             AuthenticationManager authenticationManager,
@@ -44,7 +49,9 @@ public class AuthController {
             JwtService jwtService,
             JwtDecoder jwtDecoder,
             CustomUserDetailsService userDetailsService,
-            RefreshTokenService refreshTokenService
+            RefreshTokenService refreshTokenService,
+            EmailVerificationService emailVerificationService,
+            EmailService emailService
     ) {
         this.authenticationManager = authenticationManager;
         this.userRepository = userRepository;
@@ -53,6 +60,8 @@ public class AuthController {
         this.jwtDecoder = jwtDecoder;
         this.userDetailsService = userDetailsService;
         this.refreshTokenService = refreshTokenService;
+        this.emailVerificationService = emailVerificationService;
+        this.emailService = emailService;
     }
 
     @PostMapping("/register")
@@ -69,7 +78,12 @@ public class AuthController {
 
         user.setProvider(AuthProvider.LOCAL);
 
-        userRepository.save(user);
+        AppUser savedUser = userRepository.save(user);
+
+        String verificationToken = emailVerificationService.createToken(savedUser);
+        String verificationLink = "http://localhost:8080/auth/verify-email?token=" + verificationToken;
+
+        emailService.sendVerificationEmail(savedUser.getUsername(), verificationLink);
 
         return ResponseEntity.ok("User registered successfully");
     }
@@ -82,6 +96,14 @@ public class AuthController {
                         loginRequest.password()
                 )
         );
+
+        AppUser user = userRepository.findByUsername(loginRequest.username()).orElseThrow();
+
+        if (!user.isVerified()) {
+            throw new DisabledException(
+                    "Email is not verified"
+            );
+        }
 
         String accessToken = jwtService.generateAccessToken(authentication);
 
@@ -192,5 +214,10 @@ public class AuthController {
         );
 
         return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/verify-email")
+    public ResponseEntity<String> verifyEmail(@RequestParam String token) {
+        return emailVerificationService.verify(token);
     }
 }

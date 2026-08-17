@@ -29,8 +29,11 @@ public class AppUser {
     @Column(nullable = false)
     private AuthProvider provider;
 
-    @Column(nullable = false)
+    @Column
     private String providerId;
+
+    @Column(nullable = false)
+    private boolean verified = false;
 
     public AppUser(
             String username,
