@@ -1,4 +1,4 @@
-# Authentication learning branches
+# Authentication learning
 
 This document combines the guides for every authentication experiment in this repository into a single reference. The implementations form a progression: start with the public endpoint, compare HTTP Basic with server-side sessions, then move to database users, JWTs, refresh-token revocation, Google OAuth2/OIDC, email verification, and password recovery.
 
