@@ -39,4 +39,31 @@ public class EmailService {
 
         mailSender.send(message);
     }
+
+    public void sendPasswordResetEmail(String to, String resetLink) {
+
+        SimpleMailMessage message = new SimpleMailMessage();
+
+        message.setFrom(from);
+        message.setTo(to);
+
+        message.setSubject("Reset your password");
+
+        message.setText(
+                """
+                We received a request to reset your password.
+                
+                Use the link below:
+                
+                %s
+                
+                This link will expire in 30 minutes.
+                
+                If you did not request a password reset,
+                you can ignore this email.
+                """.formatted(resetLink)
+        );
+
+        mailSender.send(message);
+    }
 }

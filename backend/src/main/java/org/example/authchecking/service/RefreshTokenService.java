@@ -3,9 +3,11 @@ package org.example.authchecking.service;
 import org.example.authchecking.entity.RefreshToken;
 import org.example.authchecking.repository.RefreshTokenRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
 
 @Service
 public class RefreshTokenService {
@@ -48,5 +50,15 @@ public class RefreshTokenService {
                     refreshToken.setRevoke(true);
                     refreshTokenRepository.save(refreshToken);
                 });
+    }
+
+    @Transactional
+    public void revokeAllByUsername(String username) {
+
+        List<RefreshToken> tokens = refreshTokenRepository.findAllByUsername(username);
+
+        tokens.forEach(token -> token.setRevoke(true));
+
+        refreshTokenRepository.saveAll(tokens);
     }
 }

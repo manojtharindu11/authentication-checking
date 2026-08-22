@@ -88,7 +88,9 @@ public class SecurityConfig {
                                         "/auth/logout",
                                         "/oauth2/**",
                                         "/login/oauth2/**",
-                                        "/auth/verify-email"
+                                        "/auth/verify-email",
+                                        "/auth/reset-password",
+                                        "/auth/forgot-password"
                                 ).permitAll()
                         .requestMatchers("/api/admin").hasRole("ADMIN")
                         .anyRequest().authenticated()

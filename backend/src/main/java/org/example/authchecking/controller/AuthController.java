@@ -1,9 +1,7 @@
 package org.example.authchecking.controller;
 
 import jakarta.servlet.http.HttpServletResponse;
-import org.example.authchecking.dto.LoginRequest;
-import org.example.authchecking.dto.LoginResponse;
-import org.example.authchecking.dto.RegisterRequest;
+import org.example.authchecking.dto.*;
 import org.example.authchecking.entity.AppUser;
 import org.example.authchecking.entity.AuthProvider;
 import org.example.authchecking.repository.UserRepository;
@@ -11,7 +9,9 @@ import org.example.authchecking.security.CustomUserDetailsService;
 import org.example.authchecking.security.JwtService;
 import org.example.authchecking.service.EmailService;
 import org.example.authchecking.service.EmailVerificationService;
+import org.example.authchecking.service.PasswordResetService;
 import org.example.authchecking.service.RefreshTokenService;
+import org.example.authchecking.validators.PasswordValidator;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
@@ -41,6 +41,8 @@ public class AuthController {
     private final RefreshTokenService refreshTokenService;
     private final EmailVerificationService emailVerificationService;
     private final EmailService emailService;
+    private final PasswordResetService passwordResetService;
+    private final PasswordValidator passwordValidator;
 
     public AuthController(
             AuthenticationManager authenticationManager,
@@ -51,7 +53,9 @@ public class AuthController {
             CustomUserDetailsService userDetailsService,
             RefreshTokenService refreshTokenService,
             EmailVerificationService emailVerificationService,
-            EmailService emailService
+            EmailService emailService,
+            PasswordResetService passwordResetService,
+            PasswordValidator passwordValidator
     ) {
         this.authenticationManager = authenticationManager;
         this.userRepository = userRepository;
@@ -62,6 +66,8 @@ public class AuthController {
         this.refreshTokenService = refreshTokenService;
         this.emailVerificationService = emailVerificationService;
         this.emailService = emailService;
+        this.passwordResetService = passwordResetService;
+        this.passwordValidator = passwordValidator;
     }
 
     @PostMapping("/register")
@@ -69,6 +75,8 @@ public class AuthController {
         if (userRepository.existsByUsername(request.username())) {
             return ResponseEntity.badRequest().body("Username already exist");
         }
+
+        passwordValidator.validatePassword(request.password());
 
         AppUser user = new AppUser(
                 request.username(),
@@ -219,5 +227,29 @@ public class AuthController {
     @GetMapping("/verify-email")
     public ResponseEntity<String> verifyEmail(@RequestParam String token) {
         return emailVerificationService.verify(token);
+    }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<String> forgotPassword(@RequestBody ForgotPasswordRequest request) {
+
+        userRepository.findByUsername(request.email())
+                .ifPresent(user -> {
+                    String token = passwordResetService.createToken(user);
+
+                    String resetLink = "http://localhost:5173/reset-password?token="+token;
+
+                    emailService.sendPasswordResetEmail(user.getUsername(), resetLink);
+                });
+
+        return ResponseEntity.ok(
+                "If an account exists for that email, a reset link has been sent."
+        );
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<String> resetPassword(@RequestBody ResetPasswordRequest request) {
+        passwordResetService.resetPassword(request.token(), request.newPassword());
+
+        return ResponseEntity.ok("Password reset successfully");
     }
 }
